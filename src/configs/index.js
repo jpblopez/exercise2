@@ -1,6 +1,6 @@
 import "dotenv/config";
 
 export default {
-  port: process.env.PORT,
+  port: process.env.PORT || 3000,
   secret: "thisismysecrethaha",
 };
