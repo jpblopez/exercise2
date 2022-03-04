@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "migrate": "npx knex migrate:latest --esm",
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "nodemon src/app.js"
   },
@@ -16,10 +17,13 @@
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
     "dotenv": "^16.0.0",
+    "esm": "^3.2.25",
     "express": "^4.17.3",
     "http-errors": "^2.0.0",
     "jsonwebtoken": "^8.5.1",
     "jwt-decode": "^3.1.2",
+    "knex": "^1.0.3",
+    "mysql": "^2.18.1",
     "yup": "^0.32.11"
   },
   "type": "module"

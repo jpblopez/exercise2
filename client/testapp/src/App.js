@@ -4,7 +4,6 @@ import LoginForm from './Login.jsx';
 import Home from './home.jsx';
 import Register from './register';
 import Welcome from './welcome';
-import Test from './test';
 import { useNavigate } from 'react-router-dom';
 
 function App() {

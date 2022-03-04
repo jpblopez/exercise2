@@ -12,7 +12,8 @@ function Welcome({ LogoutSuccess }) {
         authorization: window.localStorage.getItem('token'),
       },
     });
-    if (res.data.length > 1) {
+
+    if (res.data.length > 0) {
       let temp = res.data.slice();
       setUserTweet(() => {
         return temp;

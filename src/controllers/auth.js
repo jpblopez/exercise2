@@ -3,38 +3,35 @@ import jwt from 'jsonwebtoken';
 import configs from '../configs/index.js';
 import createError from 'http-errors';
 import jwt_decode from 'jwt-decode';
+import knex from '../db/knex.js';
 
 const x = {};
-const db = [
-  {
-    id: 0,
-    username: 'test',
-    password: '$2b$10$T.XHy/l/NxrwxChD0NMvIuZ6LxIN.IVz4zvlfJlZTbPJhYWaRszZC',
-    name: 'test',
-  },
-];
-const tweets = [];
-let currentUserTweets = [];
 
-x.login = (req, res, next) => {
+x.login = async (req, res, next) => {
   const { username, password } = req.body;
-
-  const id = db.findIndex(item => item.username === username);
+  let exist;
+  try {
+    exist = await knex
+      .select()
+      .table('user')
+      .where('username', username)
+      .first();
+  } catch (e) {
+    return next(e.message);
+  }
 
   const error = createError(422, 'Invalid username and password combination');
 
-  if (id < 0) return next(error);
+  if (!exist) return next(error);
 
-  const comparePass = db[id].password;
-
-  const valid = bcrypt.compareSync(password, comparePass);
+  const valid = bcrypt.compareSync(password, exist.password);
 
   if (!valid) return next(error);
 
   const token = jwt.sign(
     {
-      username,
-      id,
+      username: exist.username,
+      id: exist.id,
     },
     configs.secret,
     {
@@ -47,27 +44,31 @@ x.login = (req, res, next) => {
   });
 };
 
-x.register = (req, res, next) => {
+x.register = async (req, res, next) => {
   const { username, password, name } = req.body;
-
-  const exist = db.find(item => item.username === username);
+  let exist;
+  try {
+    exist = await knex
+      .select()
+      .table('user')
+      .where('username', username)
+      .first();
+  } catch (e) {
+    return next(e.message);
+  }
 
   if (exist) return next(createError(422, 'Username already exists!'));
 
-  let lastID;
-
-  if (db.length == 0) lastID = 0;
-  else lastID = Math.max(...db.map(item => item.id)) + 1;
-
   const hash = bcrypt.hashSync(password, 10);
-
-  db.push({
-    id: lastID,
-    username,
-    password: hash,
-    name,
-  });
-
+  try {
+    await knex('user').insert({
+      username: username,
+      name: name,
+      password: hash,
+    });
+  } catch (e) {
+    return next(e.message);
+  }
   res.sendStatus(200);
 };
 
@@ -77,18 +78,17 @@ x.get = (req, res) => {
   });
 };
 
-x.postTweet = (req, res) => {
+x.postTweet = async (req, res, next) => {
   const tweet = req.body;
-  const test = jwt_decode(req.headers.authorization);
-  const index = tweets.findIndex(({ id }) => id === test.id);
+  const token = jwt_decode(req.headers.authorization);
 
-  if (index < 0) {
-    tweets.push({
-      id: test.id,
-      tweet: [tweet],
+  try {
+    await knex('tweets').insert({
+      user_id: token.id,
+      tweet: tweet.tweet,
     });
-  } else {
-    tweets[index].tweet.push(tweet);
+  } catch (e) {
+    return next(e.message);
   }
 
   res.status(200).json({
@@ -96,19 +96,32 @@ x.postTweet = (req, res) => {
   });
 };
 
-x.tweet = (req, res) => {
+x.tweet = async (req, res, next) => {
   const token = jwt_decode(req.headers.authorization);
-  let userTweet = tweets.find(({ id }) => id === token.id);
-  currentUserTweets = [];
+  let exist;
+  let currentUserTweets = [];
 
-  if (!userTweet) {
-    res.status(200).send({ tweets: [] });
-    return;
+  try {
+    exist = await knex
+      .select('tweet')
+      .table('tweets')
+      .where('user_id', token.id);
+  } catch (e) {
+    console.log(exist);
+    return next(e.message);
   }
 
-  userTweet.tweet.map(c => {
-    currentUserTweets.push(c.tweet);
-  });
+  if (!exist) {
+    res.status(200).send({ tweets: [] });
+    return;
+  } else
+    exist.map(c => {
+      currentUserTweets.push(c.tweet);
+    });
+
+  // userTweet.tweet.map(c => {
+  //   currentUserTweets.push(c.tweet);
+  // });
 
   res.status(200).send(currentUserTweets);
 };
